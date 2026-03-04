@@ -1,5 +1,10 @@
 from fastapi import FastAPI
+from database import engine
+from models.db_models import Base
 from routers import auth_router, drug_log_router, interaction_router
+
+# ── Create database tables ────────────
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Polypharma API",
