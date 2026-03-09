@@ -4,3 +4,5 @@ pydantic
 python-jose[cryptography]
 passlib[bcrypt]
 sqlalchemy
+pytest
+httpx
