@@ -16,16 +16,16 @@ router = APIRouter(prefix="/interactions", tags=["Drug Interactions"])
 
 def get_recent_drugs(db: Session, current_user: User):
     time_threshold = datetime.utcnow() - timedelta(days=1)
-    recent_logs = db.query(DrugLog.drug_name).filter(
+    recent_logs = db.query(DrugLog.drug_id).filter(
         DrugLog.user_id == current_user.id,
         DrugLog.datetime >= time_threshold
-    ).all()
-    recent_drug_names = [row[0] for row in recent_logs]
+    ).distinct().all()
+    recent_drug_ids = [row[0] for row in recent_logs]
     
-    if not recent_drug_names:
+    if not recent_drug_ids:
         return [], {}
 
-    drug_records = db.query(Drug).filter(Drug.name.in_(recent_drug_names)).all()
+    drug_records = db.query(Drug).filter(Drug.id.in_(recent_drug_ids)).all()
     drug_ids = [d.id for d in drug_records]
     id_to_name = {d.id: d.name for d in drug_records}
     
@@ -161,7 +161,7 @@ async def ask_interaction(
     if not recent_logs:
         context = "The user is not currently taking any drugs."
     else:
-        drug_descriptions = [f"{log.drug_name} (Dosage: {log.dosage})" for log in recent_logs]
+        drug_descriptions = [f"{log.drug.name} (Dosage: {log.dosage})" for log in recent_logs]
         context = f"The user is currently taking the following drugs:\n- " + "\n- ".join(drug_descriptions)
         
         major_ix = get_interactions_by_level("major", current_user, db)

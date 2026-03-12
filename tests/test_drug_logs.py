@@ -1,6 +1,11 @@
 from datetime import datetime
+from models.db_models import Drug
 
-def test_create_drug_log(client, auth_header):
+
+def test_create_drug_log(client, auth_header, db_session):
+    db_session.add(Drug(id="D100", name="Aspirin"))
+    db_session.commit()
+
     payload = {
         "drug_name": "Aspirin",
         "dosage": "500mg",
@@ -14,9 +19,18 @@ def test_create_drug_log(client, auth_header):
     assert response.status_code == 201
     data = response.json()
     assert data["drug_name"] == "Aspirin"
+    assert data["drug_id"] == "D100"
     assert data["dosage"] == "500mg"
     assert "id" in data
     assert "user_id" in data
+
+def test_create_drug_log_unknown_drug(client, auth_header):
+    response = client.post(
+        "/drug-logs/",
+        json={"drug_name": "UnknownDrug999", "dosage": "500mg", "datetime": datetime.utcnow().isoformat()},
+        headers=auth_header,
+    )
+    assert response.status_code == 404
 
 def test_create_drug_log_unauthenticated(client):
     response = client.post(
@@ -25,7 +39,10 @@ def test_create_drug_log_unauthenticated(client):
     )
     assert response.status_code == 401
 
-def test_get_drug_logs(client, auth_header):
+def test_get_drug_logs(client, auth_header, db_session):
+    db_session.add(Drug(id="D200", name="Paracetamol"))
+    db_session.commit()
+
     # Empty initially
     resp1 = client.get("/drug-logs/", headers=auth_header)
     assert resp1.status_code == 200
@@ -43,8 +60,12 @@ def test_get_drug_logs(client, auth_header):
     assert resp2.status_code == 200
     assert len(resp2.json()) == 1
     assert resp2.json()[0]["drug_name"] == "Paracetamol"
+    assert resp2.json()[0]["drug_id"] == "D200"
 
-def test_update_drug_log(client, auth_header):
+def test_update_drug_log(client, auth_header, db_session):
+    db_session.add(Drug(id="D300", name="Ibuprofen"))
+    db_session.commit()
+
     # Create
     create_resp = client.post(
         "/drug-logs/",
@@ -71,7 +92,10 @@ def test_update_nonexistent_log(client, auth_header):
     )
     assert response.status_code == 404
 
-def test_delete_drug_log(client, auth_header):
+def test_delete_drug_log(client, auth_header, db_session):
+    db_session.add(Drug(id="D400", name="Cetirizine"))
+    db_session.commit()
+
     # Create
     create_resp = client.post(
         "/drug-logs/",

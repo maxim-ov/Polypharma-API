@@ -18,12 +18,12 @@ def seed_data(db_session, user_id):
     i3 = DrugInteraction(drug_a_id="D002", drug_b_id="D003", level="minor", category="C")
     db_session.add_all([i1, i2, i3])
     
-    # Add logs
+    # Add logs (using drug_id instead of drug_name)
     now = datetime.utcnow()
-    l1 = DrugLog(user_id=user_id, drug_name="DrugA", dosage="10mg", datetime=now - timedelta(hours=2))
-    l2 = DrugLog(user_id=user_id, drug_name="DrugB", dosage="20mg", datetime=now - timedelta(hours=10))
-    l3 = DrugLog(user_id=user_id, drug_name="DrugC", dosage="30mg", datetime=now - timedelta(hours=5))
-    l4 = DrugLog(user_id=user_id, drug_name="DrugD", dosage="40mg", datetime=now - timedelta(hours=48)) # old
+    l1 = DrugLog(user_id=user_id, drug_id="D001", dosage="10mg", datetime=now - timedelta(hours=2))
+    l2 = DrugLog(user_id=user_id, drug_id="D002", dosage="20mg", datetime=now - timedelta(hours=10))
+    l3 = DrugLog(user_id=user_id, drug_id="D003", dosage="30mg", datetime=now - timedelta(hours=5))
+    l4 = DrugLog(user_id=user_id, drug_id="D004", dosage="40mg", datetime=now - timedelta(hours=48)) # old
     db_session.add_all([l1, l2, l3, l4])
     db_session.commit()
 
@@ -41,8 +41,6 @@ def test_get_major_interactions(client, auth_header, db_session):
 
 def test_get_moderate_interactions(client, auth_header, db_session):
     user = db_session.query(User).filter_by(username="testuser").first()
-    # Only seed once if using fixture, but we are using fresh db per function?
-    # conftest clean_db runs autouse so it cleans up every function.
     seed_data(db_session, user.id)
     
     response = client.get("/interactions/moderate", headers=auth_header)

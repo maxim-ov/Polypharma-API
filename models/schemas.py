@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, computed_field
 from typing import Optional
 from datetime import datetime
 
@@ -42,6 +42,7 @@ class DrugLogUpdate(BaseModel):
 class DrugLogResponse(BaseModel):
     id: int
     user_id: int
+    drug_id: str
     drug_name: str
     dosage: str
     datetime: datetime

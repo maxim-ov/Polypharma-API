@@ -18,6 +18,7 @@ class Drug(Base):
 
     id = Column(String, primary_key=True, index=True)  # DDInterID
     name = Column(String, nullable=False, index=True)
+    rxcui = Column(String, index=True, nullable=True)
 
 
 class DrugInteraction(Base):
@@ -39,6 +40,8 @@ class DrugLog(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    drug_name = Column(String, nullable=False)
+    drug_id = Column(String, ForeignKey("drugs.id"), nullable=False, index=True)
     dosage = Column(String, nullable=False)
     datetime = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    drug = relationship("Drug")
