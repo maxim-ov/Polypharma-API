@@ -58,6 +58,14 @@ class DrugInteractionResponse(BaseModel):
     category: str     # single-letter code: A, B, D, H, L, P, R, V
 
 
+class InteractionAskRequest(BaseModel):
+    prompt: str
+
+
+class InteractionAskResponse(BaseModel):
+    answer: str
+
+
 # ──────────────────────────────────────
 # Generic
 # ──────────────────────────────────────

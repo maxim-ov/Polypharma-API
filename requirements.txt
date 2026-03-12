@@ -6,3 +6,5 @@ passlib[bcrypt]
 sqlalchemy
 pytest
 httpx
+google-genai
+python-dotenv

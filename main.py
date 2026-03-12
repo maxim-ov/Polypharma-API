@@ -1,4 +1,9 @@
 from fastapi import FastAPI
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 from database import engine
 from models.db_models import Base
 from routers import auth_router, drug_log_router, interaction_router

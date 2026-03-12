@@ -1,9 +1,11 @@
+import os
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends
+from google import genai
+from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List
 from sqlalchemy.orm import Session
 
-from models.schemas import DrugInteractionResponse
+from models.schemas import DrugInteractionResponse, InteractionAskRequest, InteractionAskResponse
 from database import get_db
 from models.db_models import User, DrugLog, Drug, DrugInteraction
 from auth import get_current_user
@@ -134,3 +136,59 @@ async def get_safe_interactions(
                         category="None"
                     ))
     return results
+
+
+@router.post("/ask", response_model=InteractionAskResponse)
+async def ask_interaction(
+    request: InteractionAskRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Ask an LLM a question about the user's currently active drugs."""
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="GEMINI_API_KEY environment variable not set."
+        )
+
+    time_threshold = datetime.utcnow() - timedelta(days=1)
+    recent_logs = db.query(DrugLog).filter(
+        DrugLog.user_id == current_user.id,
+        DrugLog.datetime >= time_threshold
+    ).all()
+    
+    if not recent_logs:
+        context = "The user is not currently taking any drugs."
+    else:
+        drug_descriptions = [f"{log.drug_name} (Dosage: {log.dosage})" for log in recent_logs]
+        context = f"The user is currently taking the following drugs:\n- " + "\n- ".join(drug_descriptions)
+        
+        major_ix = get_interactions_by_level("major", current_user, db)
+        moderate_ix = get_interactions_by_level("moderate", current_user, db)
+        minor_ix = get_interactions_by_level("minor", current_user, db)
+        
+        if major_ix or moderate_ix or minor_ix:
+            context += "\n\nKnown drug interactions from the database:"
+            if major_ix:
+                context += "\n- Major: " + ", ".join([f"{ix.drug_a} and {ix.drug_b}" for ix in major_ix])
+            if moderate_ix:
+                context += "\n- Moderate: " + ", ".join([f"{ix.drug_a} and {ix.drug_b}" for ix in moderate_ix])
+            if minor_ix:
+                context += "\n- Minor: " + ", ".join([f"{ix.drug_a} and {ix.drug_b}" for ix in minor_ix])
+        
+    prompt = f"System Context:\n{context}\n\nUser Question: {request.prompt}"
+    
+    try:
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt,
+        )
+        return InteractionAskResponse(answer=response.text)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate response: {str(e)}"
+        )
+

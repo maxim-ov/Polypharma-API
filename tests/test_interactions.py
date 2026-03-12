@@ -80,3 +80,28 @@ def test_get_safe_interactions(client, auth_header, db_session):
 def test_interactions_unauthenticated(client):
     response = client.get("/interactions/major")
     assert response.status_code == 401
+
+from unittest.mock import patch, MagicMock
+
+def test_ask_interaction(client, auth_header, db_session):
+    user = db_session.query(User).filter_by(username="testuser").first()
+    seed_data(db_session, user.id)
+    
+    with patch("routers.interaction_router.genai.Client") as mock_client:
+        mock_instance = MagicMock()
+        mock_response = MagicMock()
+        mock_response.text = "This is a mock LLM response."
+        mock_instance.models.generate_content.return_value = mock_response
+        mock_client.return_value = mock_instance
+        
+        with patch.dict("os.environ", {"GEMINI_API_KEY": "fake_key"}):
+            response = client.post(
+                "/interactions/ask",
+                headers=auth_header,
+                json={"prompt": "Is it safe to take these?"}
+            )
+            
+            assert response.status_code == 200
+            data = response.json()
+            assert data["answer"] == "This is a mock LLM response."
+            mock_instance.models.generate_content.assert_called_once()
